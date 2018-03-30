@@ -11,6 +11,7 @@ define([
         '../Core/EllipsoidOutlineGeometry',
         '../Core/GeometryInstance',
         '../Core/Iso8601',
+        '../Core/OffsetGeometryInstanceAttribute',
         '../Core/Matrix4',
         '../Core/ShowGeometryInstanceAttribute',
         '../Scene/MaterialAppearance',
@@ -35,6 +36,7 @@ define([
         EllipsoidOutlineGeometry,
         GeometryInstance,
         Iso8601,
+        OffsetGeometryInstanceAttribute,
         Matrix4,
         ShowGeometryInstanceAttribute,
         MaterialAppearance,
@@ -53,6 +55,7 @@ define([
     var radiiScratch = new Cartesian3();
     var scratchColor = new Color();
     var unitSphere = new Cartesian3(1, 1, 1);
+    var defaultOffset = new OffsetGeometryInstanceAttribute(0.0, 0.0, 0.0);
 
     function EllipsoidGeometryOptions(entity) {
         this.id = entity;
@@ -81,7 +84,7 @@ define([
             observedPropertyNames : ['availability', 'position', 'orientation', 'ellipsoid']
         });
 
-        this._isClosed = true;
+        this._onEntityPropertyChanged(entity, 'ellipsoid', entity.ellipsoid, undefined);
     }
 
     if (defined(Object.create)) {
@@ -125,12 +128,14 @@ define([
             attributes = {
                 show : show,
                 distanceDisplayCondition : distanceDisplayConditionAttribute,
-                color : color
+                color : color,
+                offset : defaultOffset
             };
         } else {
             attributes = {
                 show : show,
-                distanceDisplayCondition : distanceDisplayConditionAttribute
+                distanceDisplayCondition : distanceDisplayConditionAttribute,
+                offset : defaultOffset
             };
         }
 
@@ -170,7 +175,8 @@ define([
             attributes : {
                 show : new ShowGeometryInstanceAttribute(isAvailable && entity.isShowing && this._showProperty.getValue(time) && this._showOutlineProperty.getValue(time)),
                 color : ColorGeometryInstanceAttribute.fromColor(outlineColor),
-                distanceDisplayCondition : DistanceDisplayConditionGeometryInstanceAttribute.fromDistanceDisplayCondition(distanceDisplayCondition)
+                distanceDisplayCondition : DistanceDisplayConditionGeometryInstanceAttribute.fromDistanceDisplayCondition(distanceDisplayCondition),
+                offset : defaultOffset
             }
         });
     };

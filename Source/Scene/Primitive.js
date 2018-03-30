@@ -858,6 +858,16 @@ define([
         return vsPick;
     };
 
+    Primitive._appendOffsetToShader = function(primitive, vertexShaderSource) {
+        if (!defined(primitive._batchTableAttributeIndices.offset)) {
+            return vertexShaderSource;
+        }
+
+        var str = 'vec4 p = czm_computePosition();\n    p = p + vec4(czm_batchTable_offset(batchId), 0.0);';
+        var modifiedShader = vertexShaderSource.replace(/vec4\s+p\s+=\s+czm_computePosition\(\);/g, str);
+        return modifiedShader;
+    };
+
     Primitive._appendDistanceDisplayConditionToShader = function(primitive, vertexShaderSource, scene3DOnly) {
         if (!defined(primitive._batchTableAttributeIndices.distanceDisplayCondition)) {
             return vertexShaderSource;
@@ -1421,6 +1431,7 @@ define([
         var attributeLocations = primitive._attributeLocations;
 
         var vs = primitive._batchTable.getVertexShaderCallback()(appearance.vertexShaderSource);
+        vs = Primitive._appendOffsetToShader(primitive, vs);
         vs = Primitive._appendShowToShader(primitive, vs);
         vs = Primitive._appendDistanceDisplayConditionToShader(primitive, vs, frameState.scene3DOnly);
         vs = Primitive._updateColorAttribute(primitive, vs, false);
@@ -1640,6 +1651,17 @@ define([
                 var pixelSizeInMeters = frameState.camera.getPixelSize(boundingSphere, frameState.context.drawingBufferWidth, frameState.context.drawingBufferHeight);
                 var sizeInMeters = pixelSizeInMeters * pixelSize;
                 boundingSphereWC.radius = boundingSphere.radius + sizeInMeters;
+            }
+        }
+
+        var offsetIndex = primitive._batchTableAttributeIndices.offset;
+        if (defined(offsetIndex)) {
+            length = primitive._boundingSpheres.length;
+            for (i = 0; i < length; ++i) {
+                boundingSphere = primitive._boundingSpheres[i];
+                var wc = primitive._boundingSphereWC[i];
+                var offset = primitive._batchTable.getBatchedAttribute(i, offsetIndex, new Cartesian3());
+                wc.center = Cartesian3.add(boundingSphere.center, offset, wc.center);
             }
         }
 
@@ -1899,6 +1921,7 @@ define([
      * attributes.color = Cesium.ColorGeometryInstanceAttribute.toValue(Cesium.Color.AQUA);
      * attributes.show = Cesium.ShowGeometryInstanceAttribute.toValue(true);
      * attributes.distanceDisplayCondition = Cesium.DistanceDisplayConditionGeometryInstanceAttribute.toValue(100.0, 10000.0);
+     * attributes.offset = Cesium.OffsetGeometryInstanceAttribute.toValue(Cartesian3.IDENTITY);
      */
     Primitive.prototype.getGeometryInstanceAttributes = function(id) {
         //>>includeStart('debug', pragmas.debug);

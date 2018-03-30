@@ -7,6 +7,7 @@ define([
         '../Core/DistanceDisplayConditionGeometryInstanceAttribute',
         '../Core/GeometryInstance',
         '../Core/Iso8601',
+        '../Core/OffsetGeometryInstanceAttribute',
         '../Core/PolylineVolumeGeometry',
         '../Core/PolylineVolumeOutlineGeometry',
         '../Core/ShowGeometryInstanceAttribute',
@@ -25,6 +26,7 @@ define([
         DistanceDisplayConditionGeometryInstanceAttribute,
         GeometryInstance,
         Iso8601,
+        OffsetGeometryInstanceAttribute,
         PolylineVolumeGeometry,
         PolylineVolumeOutlineGeometry,
         ShowGeometryInstanceAttribute,
@@ -37,6 +39,7 @@ define([
     'use strict';
 
     var scratchColor = new Color();
+    var defaultOffset = new OffsetGeometryInstanceAttribute(0.0, 0.0, 0.0);
 
     function PolylineVolumeGeometryOptions(entity) {
         this.id = entity;
@@ -64,6 +67,8 @@ define([
             geometryPropertyName : 'polylineVolume',
             observedPropertyNames : ['availability', 'polylineVolume']
         });
+
+        this._onEntityPropertyChanged(entity, 'polylineVolume', entity.polylineVolume, undefined);
     }
 
     if (defined(Object.create)) {
@@ -109,12 +114,14 @@ define([
             attributes = {
                 show : show,
                 distanceDisplayCondition : distanceDisplayConditionAttribute,
-                color : color
+                color : color,
+                offset : defaultOffset
             };
         } else {
             attributes = {
                 show : show,
-                distanceDisplayCondition : distanceDisplayConditionAttribute
+                distanceDisplayCondition : distanceDisplayConditionAttribute,
+                offset: defaultOffset
             };
         }
 
@@ -153,7 +160,8 @@ define([
             attributes : {
                 show : new ShowGeometryInstanceAttribute(isAvailable && entity.isShowing && this._showProperty.getValue(time) && this._showOutlineProperty.getValue(time)),
                 color : ColorGeometryInstanceAttribute.fromColor(outlineColor),
-                distanceDisplayCondition : DistanceDisplayConditionGeometryInstanceAttribute.fromDistanceDisplayCondition(distanceDisplayCondition)
+                distanceDisplayCondition : DistanceDisplayConditionGeometryInstanceAttribute.fromDistanceDisplayCondition(distanceDisplayCondition),
+                offset : defaultOffset
             }
         });
     };

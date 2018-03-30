@@ -1,4 +1,6 @@
 define([
+        '../Core/ApproximateTerrainHeights',
+        '../Core/Cartesian3',
         '../Core/Check',
         '../Core/Color',
         '../Core/ColorGeometryInstanceAttribute',
@@ -8,9 +10,11 @@ define([
         '../Core/GeometryInstance',
         '../Core/isArray',
         '../Core/Iso8601',
+        '../Core/OffsetGeometryInstanceAttribute',
         '../Core/PolygonGeometry',
         '../Core/PolygonHierarchy',
         '../Core/PolygonOutlineGeometry',
+        '../Core/Rectangle',
         '../Core/ShowGeometryInstanceAttribute',
         '../Scene/GroundPrimitive',
         '../Scene/MaterialAppearance',
@@ -18,8 +22,11 @@ define([
         './ColorMaterialProperty',
         './DynamicGeometryUpdater',
         './GeometryUpdater',
+        './GroundGeometryUpdater',
         './Property'
     ], function(
+        ApproximateTerrainHeights,
+        Cartesian3,
         Check,
         Color,
         ColorGeometryInstanceAttribute,
@@ -29,9 +36,11 @@ define([
         GeometryInstance,
         isArray,
         Iso8601,
+        OffsetGeometryInstanceAttribute,
         PolygonGeometry,
         PolygonHierarchy,
         PolygonOutlineGeometry,
+        Rectangle,
         ShowGeometryInstanceAttribute,
         GroundPrimitive,
         MaterialAppearance,
@@ -39,10 +48,12 @@ define([
         ColorMaterialProperty,
         DynamicGeometryUpdater,
         GeometryUpdater,
+        GroundGeometryUpdater,
         Property) {
     'use strict';
 
     var scratchColor = new Color();
+    var defaultOffset = Cartesian3.ZERO;
 
     function PolygonGeometryOptions(entity) {
         this.id = entity;
@@ -67,17 +78,19 @@ define([
      * @param {Scene} scene The scene where visualization is taking place.
      */
     function PolygonGeometryUpdater(entity, scene) {
-        GeometryUpdater.call(this, {
+        GroundGeometryUpdater.call(this, {
             entity : entity,
             scene : scene,
             geometryOptions : new PolygonGeometryOptions(entity),
             geometryPropertyName : 'polygon',
             observedPropertyNames : ['availability', 'polygon']
         });
+
+        this._onEntityPropertyChanged(entity, 'polygon', entity.polygon, undefined);
     }
 
     if (defined(Object.create)) {
-        PolygonGeometryUpdater.prototype = Object.create(GeometryUpdater.prototype);
+        PolygonGeometryUpdater.prototype = Object.create(GroundGeometryUpdater.prototype);
         PolygonGeometryUpdater.prototype.constructor = PolygonGeometryUpdater;
     }
 
@@ -119,14 +132,18 @@ define([
             attributes = {
                 show : show,
                 distanceDisplayCondition : distanceDisplayConditionAttribute,
-                color : color
+                color : color,
+                offset : new OffsetGeometryInstanceAttribute(0, 0, 0)
             };
         } else {
             attributes = {
                 show : show,
-                distanceDisplayCondition : distanceDisplayConditionAttribute
+                distanceDisplayCondition : distanceDisplayConditionAttribute,
+                offset : new OffsetGeometryInstanceAttribute(0, 0, 0)
             };
         }
+
+        this._options.extrudedHeight = -1000;
 
         return new GeometryInstance({
             id : entity,
@@ -163,7 +180,8 @@ define([
             attributes : {
                 show : new ShowGeometryInstanceAttribute(isAvailable && entity.isShowing && this._showProperty.getValue(time) && this._showOutlineProperty.getValue(time)),
                 color : ColorGeometryInstanceAttribute.fromColor(outlineColor),
-                distanceDisplayCondition : DistanceDisplayConditionGeometryInstanceAttribute.fromDistanceDisplayCondition(distanceDisplayCondition)
+                distanceDisplayCondition : DistanceDisplayConditionGeometryInstanceAttribute.fromDistanceDisplayCondition(distanceDisplayCondition),
+                offset : new OffsetGeometryInstanceAttribute(0, 0, 0)
             }
         });
     };

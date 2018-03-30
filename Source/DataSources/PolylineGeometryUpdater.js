@@ -13,6 +13,7 @@ define([
         '../Core/Event',
         '../Core/GeometryInstance',
         '../Core/Iso8601',
+        '../Core/OffsetGeometryInstanceAttribute',
         '../Core/PolylineGeometry',
         '../Core/PolylinePipeline',
         '../Core/ShowGeometryInstanceAttribute',
@@ -40,6 +41,7 @@ define([
         Event,
         GeometryInstance,
         Iso8601,
+        OffsetGeometryInstanceAttribute,
         PolylineGeometry,
         PolylinePipeline,
         ShowGeometryInstanceAttribute,
@@ -62,6 +64,7 @@ define([
     var defaultShow = new ConstantProperty(true);
     var defaultShadows = new ConstantProperty(ShadowMode.DISABLED);
     var defaultDistanceDisplayCondition = new ConstantProperty(new DistanceDisplayCondition());
+    var defaultOffset = new OffsetGeometryInstanceAttribute(0.0, 0.0, 0.0);
 
     function GeometryOptions(entity) {
         this.id = entity;
@@ -323,7 +326,8 @@ define([
 
         var attributes = {
             show : show,
-            distanceDisplayCondition : distanceDisplayConditionAttribute
+            distanceDisplayCondition : distanceDisplayConditionAttribute,
+            offset: defaultOffset
         };
 
         var currentColor;
