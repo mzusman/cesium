@@ -30,9 +30,7 @@ define([
     function GroundGeometryUpdater(options) {
         GeometryUpdater.call(this, options);
 
-        this._zIndex = 0;
-
-        this.offsetProperty = undefined;
+        this._positionOnTerrainProperty = undefined;
     }
 
     if (defined(Object.create)) {
@@ -41,15 +39,9 @@ define([
     }
 
     defineProperties(GroundGeometryUpdater.prototype, {
-        /**
-         * Gets the zindex
-         * @type {Number}
-         * @memberof GroundGeometryUpdater.prototype
-         * @readonly
-         */
-        zIndex: {
+        positionOnTerrainProperty: {
             get: function() {
-                return this._zIndex;
+                return this._positionOnTerrainProperty;
             }
         }
     });
@@ -64,14 +56,8 @@ define([
         if (!defined(geometry)) {
             return;
         }
-        var zIndex = Property.getValueOrUndefined(geometry.zIndex, Iso8601.MINIMUM_VALUE);
-        if (defined(zIndex) && (this._dynamic || !Property.isConstant(geometry.zIndex) || defined(this._options.height) || defined(this._options.extrudedHeight))) {
-            oneTimeWarning(oneTimeWarning.geometryZIndex);
-        }
 
-        this._zIndex = defaultValue(zIndex, 0);
-
-        this.offsetProperty = geometry.relativeToTerrain;
+        this._positionOnTerrainProperty = geometry.heightRelativeToTerrain;
     };
 
     return GroundGeometryUpdater;

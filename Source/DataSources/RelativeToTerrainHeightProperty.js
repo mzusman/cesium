@@ -1,5 +1,4 @@
 define([
-    '../Core/ApproximateTerrainHeights',
     '../Core/defaultValue',
     '../Core/defined',
     '../Core/defineProperties',
@@ -14,7 +13,6 @@ define([
     './createPropertyDescriptor',
     './Property'
 ], function(
-    ApproximateTerrainHeights,
     defaultValue,
     defined,
     defineProperties,
@@ -63,10 +61,8 @@ define([
         this._definitionChanged = new Event();
 
         this._scene = scene;
-        this._cartographicPosition = new Cartographic();
-        this._terrainHeight = 0;
+        this._terrainPosition = new Cartesian3();
         this._removeCallbackFunc = undefined;
-        this._result = new Cartesian3();
 
         this.position = position;
     }
@@ -147,17 +143,19 @@ define([
         }
 
         var that = this;
-        var cartographicPosition = ellipsoid.cartesianToCartographic(position);
+        var cartographicPosition = ellipsoid.cartesianToCartographic(position); //TODO result param
 
         function updateFunction(clampedPosition) {
-            var clampedCart = ellipsoid.cartesianToCartographic(clampedPosition);
-            that._terrainHeight = defaultValue(clampedCart.height, 0);
+            that._terrainPosition = Cartesian3.clone(clampedPosition, that._terrainPosition);
         }
         this._removeCallbackFunc = surface.updateHeight(cartographicPosition, updateFunction);
 
         var height = globe.getHeight(cartographicPosition);
         if (defined(height)) {
-            that._terrainHeight = defaultValue(height, 0);
+            cartographicPosition.height = height;
+            this._terrainPosition = ellipsoid.cartographicToCartesian(cartographicPosition, this._terrainPosition);
+        } else {
+            this._terrainPosition = Cartesian3.clone(position);
         }
     };
 
@@ -166,13 +164,12 @@ define([
      *
      * @returns {Number} The height relative to terrain
      */
-    RelativeToTerrainHeightProperty.prototype.getValue = function(time) {
-        var position = Property.getValueOrUndefined(this._position, time);
+    RelativeToTerrainHeightProperty.prototype.getValue = function() {
+        var position = Property.getValueOrUndefined(this._position, Iso8601.MINIMUM_VALUE); //TODO: what do I do for time varying position?
         if (!defined(position)) {
             return;
         }
-        var normal = this._scene.globe.ellipsoid.geodeticSurfaceNormal(position, normalScratch);
-        return Cartesian3.multiplyByScalar(normal, this._terrainHeight, this._result);
+        return this._terrainPosition;
     };
 
     /**

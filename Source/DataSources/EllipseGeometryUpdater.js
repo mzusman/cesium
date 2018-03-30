@@ -1,4 +1,5 @@
 define([
+        '../Core/Cartesian3',
         '../Core/Check',
         '../Core/Color',
         '../Core/ColorGeometryInstanceAttribute',
@@ -9,6 +10,7 @@ define([
         '../Core/EllipseOutlineGeometry',
         '../Core/GeometryInstance',
         '../Core/Iso8601',
+        '../Core/OffsetGeometryInstanceAttribute',
         '../Core/ShowGeometryInstanceAttribute',
         '../Scene/GroundPrimitive',
         '../Scene/MaterialAppearance',
@@ -19,6 +21,7 @@ define([
         './GroundGeometryUpdater',
         './Property'
     ], function(
+        Cartesian3,
         Check,
         Color,
         ColorGeometryInstanceAttribute,
@@ -29,6 +32,7 @@ define([
         EllipseOutlineGeometry,
         GeometryInstance,
         Iso8601,
+        OffsetGeometryInstanceAttribute,
         ShowGeometryInstanceAttribute,
         GroundPrimitive,
         MaterialAppearance,
@@ -41,6 +45,7 @@ define([
     'use strict';
 
     var scratchColor = new Color();
+    var defaultOffset = Cartesian3.ZERO;
 
     function EllipseGeometryOptions(entity) {
         this.id = entity;
@@ -108,6 +113,7 @@ define([
         var show = new ShowGeometryInstanceAttribute(isAvailable && entity.isShowing && this._showProperty.getValue(time) && this._fillProperty.getValue(time));
         var distanceDisplayCondition = this._distanceDisplayConditionProperty.getValue(time);
         var distanceDisplayConditionAttribute = DistanceDisplayConditionGeometryInstanceAttribute.fromDistanceDisplayCondition(distanceDisplayCondition);
+        var offset = OffsetGeometryInstanceAttribute.fromCartesian3(Property.getValueOrUndefined(this._offsetProperty, time));
         if (this._materialProperty instanceof ColorMaterialProperty) {
             var currentColor;
             if (defined(this._materialProperty.color) && (this._materialProperty.color.isConstant || isAvailable)) {
@@ -120,13 +126,20 @@ define([
             attributes = {
                 show : show,
                 distanceDisplayCondition : distanceDisplayConditionAttribute,
-                color : color
+                color : color,
+                offset : offset
             };
         } else {
             attributes = {
                 show : show,
-                distanceDisplayCondition : distanceDisplayConditionAttribute
+                distanceDisplayCondition : distanceDisplayConditionAttribute,
+                offset : offset
             };
+        }
+
+        if (defined(Property.getValueOrUndefined(entity.ellipse.heightRelativeToTerrain, time)) && this._options.extrudedHeight === 0) {
+            //TODO how to compute a reasonable lower height?
+            this._options.extrudedHeight = -1000;
         }
 
         return new GeometryInstance({
@@ -164,7 +177,8 @@ define([
             attributes : {
                 show : new ShowGeometryInstanceAttribute(isAvailable && entity.isShowing && this._showProperty.getValue(time) && this._showOutlineProperty.getValue(time)),
                 color : ColorGeometryInstanceAttribute.fromColor(outlineColor),
-                distanceDisplayCondition : DistanceDisplayConditionGeometryInstanceAttribute.fromDistanceDisplayCondition(distanceDisplayCondition)
+                distanceDisplayCondition : DistanceDisplayConditionGeometryInstanceAttribute.fromDistanceDisplayCondition(distanceDisplayCondition),
+                offset : OffsetGeometryInstanceAttribute.fromCartesian3(Property.getValueOrUndefined(this._offsetProperty, time))
             }
         });
     };

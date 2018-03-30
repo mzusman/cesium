@@ -120,6 +120,22 @@ define([
         var show = new ShowGeometryInstanceAttribute(isAvailable && entity.isShowing && this._showProperty.getValue(time) && this._fillProperty.getValue(time));
         var distanceDisplayCondition = this._distanceDisplayConditionProperty.getValue(time);
         var distanceDisplayConditionAttribute = DistanceDisplayConditionGeometryInstanceAttribute.fromDistanceDisplayCondition(distanceDisplayCondition);
+
+        var positionOnTerrain = Property.getValueOrUndefined(this._positionOnTerrainProperty, time);
+        var scene = this._scene;
+        var offset = defaultOffset;
+        if (defined(positionOnTerrain)) {
+            var normal = scene.globe.ellipsoid.geodeticSurfaceNormal(positionOnTerrain); //TODO result param
+            var height = scene.globe.ellipsoid.cartesianToCartographic(positionOnTerrain).height;
+            offset = Cartesian3.multiplyByScalar(normal, height, new Cartesian3()); //TODO result param
+
+            if (this._options.extrudedHeight === 0) {
+                var rectangle = Rectangle.fromCartesianArray(this._options.polygonHierarchy.positions, undefined, new Rectangle()); //TODO scratch
+                var minHeight = ApproximateTerrainHeights.getApproximateTerrainHeights(rectangle).minimumTerrainHeight;
+                this._options.extrudedHeight = minHeight - height;
+            }
+        }
+
         if (this._materialProperty instanceof ColorMaterialProperty) {
             var currentColor;
             if (defined(this._materialProperty.color) && (this._materialProperty.color.isConstant || isAvailable)) {
@@ -133,13 +149,13 @@ define([
                 show : show,
                 distanceDisplayCondition : distanceDisplayConditionAttribute,
                 color : color,
-                offset : new OffsetGeometryInstanceAttribute(0, 0, 0)
+                offset : OffsetGeometryInstanceAttribute.fromCartesian3(offset)
             };
         } else {
             attributes = {
                 show : show,
                 distanceDisplayCondition : distanceDisplayConditionAttribute,
-                offset : new OffsetGeometryInstanceAttribute(0, 0, 0)
+                offset : OffsetGeometryInstanceAttribute.fromCartesian3(offset)
             };
         }
 
@@ -174,6 +190,21 @@ define([
         var outlineColor = Property.getValueOrDefault(this._outlineColorProperty, time, Color.BLACK, scratchColor);
         var distanceDisplayCondition = this._distanceDisplayConditionProperty.getValue(time);
 
+        var positionOnTerrain = Property.getValueOrUndefined(this._positionOnTerrainProperty, time);
+        var scene = this._scene;
+        var offset = defaultOffset;
+        if (defined(positionOnTerrain)) {
+            var normal = scene.globe.ellipsoid.geodeticSurfaceNormal(positionOnTerrain); //TODO result param
+            var height = scene.globe.ellipsoid.cartesianToCartographic(positionOnTerrain).height;
+            offset = Cartesian3.multiplyByScalar(normal, height, new Cartesian3()); //TODO result param
+
+            if (this._options.extrudedHeight === 0) {
+                var rectangle = Rectangle.fromCartesianArray(this._options.polygonHierarchy.positions, undefined, new Rectangle()); //TODO scratch
+                var minHeight = ApproximateTerrainHeights.getApproximateTerrainHeights(rectangle).minimumTerrainHeight;
+                this._options.extrudedHeight = minHeight - height;
+            }
+        }
+
         return new GeometryInstance({
             id : entity,
             geometry : new PolygonOutlineGeometry(this._options),
@@ -181,7 +212,7 @@ define([
                 show : new ShowGeometryInstanceAttribute(isAvailable && entity.isShowing && this._showProperty.getValue(time) && this._showOutlineProperty.getValue(time)),
                 color : ColorGeometryInstanceAttribute.fromColor(outlineColor),
                 distanceDisplayCondition : DistanceDisplayConditionGeometryInstanceAttribute.fromDistanceDisplayCondition(distanceDisplayCondition),
-                offset : new OffsetGeometryInstanceAttribute(0, 0, 0)
+                offset : OffsetGeometryInstanceAttribute.fromCartesian3(offset)
             }
         });
     };

@@ -80,6 +80,8 @@ define([
         this._distanceDisplayConditionSubscription = undefined;
         this._classificationType = undefined;
         this._classificationTypeSubscription = undefined;
+        this._heightRelativeToTerrain = undefined;
+        this._heightRelativeToTerrainSubscription = undefined;
         this._definitionChanged = new Event();
 
         this.merge(defaultValue(options, defaultValue.EMPTY_OBJECT));
@@ -231,7 +233,14 @@ define([
          * @type {Property}
          * @default ClassificationType.BOTH
          */
-        classificationType : createPropertyDescriptor('classificationType')
+        classificationType : createPropertyDescriptor('classificationType'),
+
+        /**
+         * Gets or sets the property specifying that height is relative to terrain
+         * @memberof EllipseGraphics.prototype
+         * @type {HeightRelativeToTerrainProperty}
+         */
+        heightRelativeToTerrain : createPropertyDescriptor('heightRelativeToTerrain')
     });
 
     /**
@@ -261,6 +270,8 @@ define([
         result.shadows = this.shadows;
         result.distanceDisplayCondition = this.distanceDisplayCondition;
         result.classificationType = this.classificationType;
+        result.heightRelativeToTerrain = this.heightRelativeToTerrain;
+
         return result;
     };
 
@@ -294,6 +305,7 @@ define([
         this.shadows = defaultValue(this.shadows, source.shadows);
         this.distanceDisplayCondition = defaultValue(this.distanceDisplayCondition, source.distanceDisplayCondition);
         this.classificationType = defaultValue(this.classificationType, source.classificationType);
+        this.heightRelativeToTerrain = defaultValue(this.heightRelativeToTerrain, source.heightRelativeToTerrain);
     };
 
     return EllipseGraphics;
