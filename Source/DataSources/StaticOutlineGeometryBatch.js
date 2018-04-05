@@ -259,7 +259,7 @@ define([
     /**
      * @private
      */
-    function StaticOutlineGeometryBatch(primitives, scene, shadows) {
+    function StaticOutlineGeometryBatch(primitives, scene, shadows, offset) {
         this._primitives = primitives;
         this._scene = scene;
         this._shadows = shadows;

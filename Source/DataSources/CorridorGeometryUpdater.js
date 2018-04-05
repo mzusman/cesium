@@ -1,4 +1,5 @@
 define([
+        '../Core/Cartesian3',
         '../Core/Check',
         '../Core/Color',
         '../Core/ColorGeometryInstanceAttribute',
@@ -7,17 +8,24 @@ define([
         '../Core/defined',
         '../Core/DeveloperError',
         '../Core/DistanceDisplayConditionGeometryInstanceAttribute',
+        '../Core/Ellipsoid',
         '../Core/GeometryInstance',
         '../Core/Iso8601',
+        '../Core/OffsetGeometryInstanceAttribute',
+        '../Core/Rectangle',
         '../Core/ShowGeometryInstanceAttribute',
         '../Scene/GroundPrimitive',
+        '../Scene/HeightReference',
         '../Scene/MaterialAppearance',
         '../Scene/PerInstanceColorAppearance',
         './ColorMaterialProperty',
         './DynamicGeometryUpdater',
+        './GeometryHeightProperty',
         './GeometryUpdater',
+        './GroundGeometryUpdater',
         './Property'
     ], function(
+        Cartesian3,
         Check,
         Color,
         ColorGeometryInstanceAttribute,
@@ -26,19 +34,28 @@ define([
         defined,
         DeveloperError,
         DistanceDisplayConditionGeometryInstanceAttribute,
+        Ellipsoid,
         GeometryInstance,
         Iso8601,
+        OffsetGeometryInstanceAttribute,
+        Rectangle,
         ShowGeometryInstanceAttribute,
         GroundPrimitive,
+        HeightReference,
         MaterialAppearance,
         PerInstanceColorAppearance,
         ColorMaterialProperty,
         DynamicGeometryUpdater,
+        GeometryHeightProperty,
         GeometryUpdater,
+        GroundGeometryUpdater,
         Property) {
     'use strict';
 
     var scratchColor = new Color();
+    var defaultOffset = Cartesian3.ZERO;
+    var scratchRectangle = new Rectangle();
+    var offsetScratch = new Cartesian3();
 
     function CorridorGeometryOptions(entity) {
         this.id = entity;
@@ -61,17 +78,19 @@ define([
      * @param {Scene} scene The scene where visualization is taking place.
      */
     function CorridorGeometryUpdater(entity, scene) {
-        GeometryUpdater.call(this, {
+        GroundGeometryUpdater.call(this, {
             entity : entity,
             scene : scene,
             geometryOptions : new CorridorGeometryOptions(entity),
             geometryPropertyName : 'corridor',
             observedPropertyNames : ['availability', 'corridor']
         });
+
+        this._onEntityPropertyChanged(entity, 'corridor', entity.corridor, undefined);
     }
 
     if (defined(Object.create)) {
-        CorridorGeometryUpdater.prototype = Object.create(GeometryUpdater.prototype);
+        CorridorGeometryUpdater.prototype = Object.create(GroundGeometryUpdater.prototype);
         CorridorGeometryUpdater.prototype.constructor = CorridorGeometryUpdater;
     }
 
@@ -100,6 +119,7 @@ define([
         var color;
         var show = new ShowGeometryInstanceAttribute(isAvailable && entity.isShowing && this._showProperty.getValue(time) && this._fillProperty.getValue(time));
         var distanceDisplayCondition = DistanceDisplayConditionGeometryInstanceAttribute.fromDistanceDisplayCondition(this._distanceDisplayConditionProperty.getValue(time));
+        var offset = OffsetGeometryInstanceAttribute.fromCartesian3(Property.getValueOrDefault(this._terrainOffsetProperty, time, defaultOffset, offsetScratch));
         if (this._materialProperty instanceof ColorMaterialProperty) {
             var currentColor;
             if (defined(this._materialProperty.color) && (this._materialProperty.color.isConstant || isAvailable)) {
@@ -112,12 +132,14 @@ define([
             attributes = {
                 show : show,
                 distanceDisplayCondition : distanceDisplayCondition,
-                color : color
+                color : color,
+                offset : offset
             };
         } else {
             attributes = {
                 show : show,
-                distanceDisplayCondition : distanceDisplayCondition
+                distanceDisplayCondition : distanceDisplayCondition,
+                offset : offset
             };
         }
 
@@ -148,16 +170,25 @@ define([
         var entity = this._entity;
         var isAvailable = entity.isAvailable(time);
         var outlineColor = Property.getValueOrDefault(this._outlineColorProperty, time, Color.BLACK, scratchColor);
-
+        var offset = OffsetGeometryInstanceAttribute.fromCartesian3(Property.getValueOrDefault(this._terrainOffsetProperty, time, defaultOffset, offsetScratch));
         return new GeometryInstance({
             id : entity,
             geometry : new CorridorOutlineGeometry(this._options),
             attributes : {
                 show : new ShowGeometryInstanceAttribute(isAvailable && entity.isShowing && this._showProperty.getValue(time) && this._showOutlineProperty.getValue(time)),
                 color : ColorGeometryInstanceAttribute.fromColor(outlineColor),
-                distanceDisplayCondition : DistanceDisplayConditionGeometryInstanceAttribute.fromDistanceDisplayCondition(this._distanceDisplayConditionProperty.getValue(time))
+                distanceDisplayCondition : DistanceDisplayConditionGeometryInstanceAttribute.fromDistanceDisplayCondition(this._distanceDisplayConditionProperty.getValue(time)),
+                offset : offset
             }
         });
+    };
+
+    CorridorGeometryUpdater.prototype._computeCenter = function(entity, corridor, time, result) {
+        var positions = Property.getValueOrUndefined(corridor.positions, time);
+        if (!defined(positions) || positions.length === 0) {
+            return;
+        }
+        return Cartesian3.clone(positions[Math.floor(positions.length / 2.0)], result);
     };
 
     CorridorGeometryUpdater.prototype._isHidden = function(entity, corridor) {
@@ -200,10 +231,18 @@ define([
         options.vertexFormat = isColorMaterial ? PerInstanceColorAppearance.VERTEX_FORMAT : MaterialAppearance.MaterialSupport.TEXTURED.vertexFormat;
         options.positions = corridor.positions.getValue(Iso8601.MINIMUM_VALUE, options.positions);
         options.height = defined(height) ? height.getValue(Iso8601.MINIMUM_VALUE) : undefined;
-        options.extrudedHeight = defined(extrudedHeight) ? extrudedHeight.getValue(Iso8601.MINIMUM_VALUE) : undefined;
         options.granularity = defined(granularity) ? granularity.getValue(Iso8601.MINIMUM_VALUE) : undefined;
         options.width = defined(width) ? width.getValue(Iso8601.MINIMUM_VALUE) : undefined;
         options.cornerType = defined(cornerType) ? cornerType.getValue(Iso8601.MINIMUM_VALUE) : undefined;
+
+        if (extrudedHeight instanceof GeometryHeightProperty && extrudedHeight.heightReference === HeightReference.CLAMP_TO_GROUND) {
+            options.ellipsoid = Ellipsoid.WGS84;
+            options.extrudedHeight = GeometryHeightProperty.getMinimumTerrainValue(CorridorGeometry.computeRectangle(options, scratchRectangle));
+            options.extrudedHeight -= 100; // TODO adjust for terrain height
+            delete options.ellipsoid;
+        } else {
+            options.extrudedHeight = defined(extrudedHeight) ? extrudedHeight.getValue(Iso8601.MINIMUM_VALUE) : undefined;
+        }
     };
 
     CorridorGeometryUpdater.DynamicGeometryUpdater = DynamicCorridorGeometryUpdater;

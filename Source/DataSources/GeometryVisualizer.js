@@ -28,6 +28,7 @@ define([
         './StaticGeometryPerMaterialBatch',
         './StaticGroundGeometryColorBatch',
         './StaticOutlineGeometryBatch',
+        './TerrainOffsetProperty',
         './WallGeometryUpdater'
     ], function(
         AssociativeArray,
@@ -59,6 +60,7 @@ define([
         StaticGeometryPerMaterialBatch,
         StaticGroundGeometryColorBatch,
         StaticOutlineGeometryBatch,
+        TerrainOffsetProperty,
         WallGeometryUpdater) {
     'use strict';
 
@@ -140,20 +142,28 @@ define([
         this._changedObjects = new AssociativeArray();
 
         var numberOfShadowModes = ShadowMode.NUMBER_OF_SHADOW_MODES;
-        this._outlineBatches = new Array(numberOfShadowModes);
-        this._closedColorBatches = new Array(numberOfShadowModes);
-        this._closedMaterialBatches = new Array(numberOfShadowModes);
-        this._openColorBatches = new Array(numberOfShadowModes);
-        this._openMaterialBatches = new Array(numberOfShadowModes);
+        this._outlineBatches = new Array(numberOfShadowModes*2);
+        this._closedColorBatches = new Array(numberOfShadowModes*2);
+        this._closedMaterialBatches = new Array(numberOfShadowModes*2);
+        this._openColorBatches = new Array(numberOfShadowModes*2);
+        this._openMaterialBatches = new Array(numberOfShadowModes*2);
 
         var i;
         for (i = 0; i < numberOfShadowModes; ++i) {
-            this._outlineBatches[i] = new StaticOutlineGeometryBatch(primitives, scene, i);
+            this._outlineBatches[i] = new StaticOutlineGeometryBatch(primitives, scene, i, false);
+            this._outlineBatches[numberOfShadowModes + i] = new StaticOutlineGeometryBatch(primitives, scene, i, true);
 
-            this._closedColorBatches[i] = new StaticGeometryColorBatch(primitives, PerInstanceColorAppearance, undefined, true, i);
-            this._closedMaterialBatches[i] = new StaticGeometryPerMaterialBatch(primitives, MaterialAppearance, undefined, true, i);
-            this._openColorBatches[i] = new StaticGeometryColorBatch(primitives, PerInstanceColorAppearance, undefined, false, i);
-            this._openMaterialBatches[i] = new StaticGeometryPerMaterialBatch(primitives, MaterialAppearance, undefined, false, i);
+            this._closedColorBatches[i] = new StaticGeometryColorBatch(primitives, PerInstanceColorAppearance, undefined, true, i, true);
+            this._closedColorBatches[numberOfShadowModes + i] = new StaticGeometryColorBatch(primitives, PerInstanceColorAppearance, undefined, true, i, false);
+
+            this._closedMaterialBatches[i] = new StaticGeometryPerMaterialBatch(primitives, MaterialAppearance, undefined, true, i, true);
+            this._closedMaterialBatches[numberOfShadowModes + i] = new StaticGeometryPerMaterialBatch(primitives, MaterialAppearance, undefined, true, i, false);
+
+            this._openColorBatches[i] = new StaticGeometryColorBatch(primitives, PerInstanceColorAppearance, undefined, false, i, true);
+            this._openColorBatches[numberOfShadowModes + i] = new StaticGeometryColorBatch(primitives, PerInstanceColorAppearance, undefined, false, i, false);
+
+            this._openMaterialBatches[i] = new StaticGeometryPerMaterialBatch(primitives, MaterialAppearance, undefined, false, i, true);
+            this._openMaterialBatches[numberOfShadowModes + i] = new StaticGeometryPerMaterialBatch(primitives, MaterialAppearance, undefined, false, i, false);
         }
 
         var numberOfClassificationTypes = ClassificationType.NUMBER_OF_CLASSIFICATION_TYPES;
@@ -370,8 +380,13 @@ define([
             shadows = updater.shadowsProperty.getValue(time);
         }
 
+        var numberOfShadowModes = ShadowMode.NUMBER_OF_SHADOW_MODES;
         if (updater.outlineEnabled) {
-            this._outlineBatches[shadows].add(time, updater);
+            if (updater.terrainOffsetProperty instanceof TerrainOffsetProperty) {
+                this._outlineBatches[numberOfShadowModes + shadows].add(time, updater);
+            } else {
+                this._outlineBatches[shadows].add(time, updater);
+            }
         }
 
         if (updater.fillEnabled) {
@@ -380,14 +395,32 @@ define([
                 this._groundColorBatches[classificationType].add(time, updater);
             } else if (updater.isClosed) {
                 if (updater.fillMaterialProperty instanceof ColorMaterialProperty) {
-                    this._closedColorBatches[shadows].add(time, updater);
+                    if (updater.terrainOffsetProperty instanceof TerrainOffsetProperty) {
+                        this._closedColorBatches[numberOfShadowModes + shadows].add(time, updater);
+                    } else {
+                        this._closedColorBatches[shadows].add(time, updater);
+                    }
                 } else {
-                    this._closedMaterialBatches[shadows].add(time, updater);
+                    // eslint-disable-next-line no-lonely-if
+                    if (updater.terrainOffsetProperty instanceof TerrainOffsetProperty) {
+                        this._closedMaterialBatches[numberOfShadowModes + shadows].add(time, updater);
+                    } else {
+                        this._closedMaterialBatches[shadows].add(time, updater);
+                    }
                 }
             } else if (updater.fillMaterialProperty instanceof ColorMaterialProperty) {
-                this._openColorBatches[shadows].add(time, updater);
+                if (updater.terrainOffsetProperty instanceof TerrainOffsetProperty) {
+                    this._openColorBatches[numberOfShadowModes + shadows].add(time, updater);
+                } else {
+                    this._openColorBatches[shadows].add(time, updater);
+                }
             } else {
-                this._openMaterialBatches[shadows].add(time, updater);
+                // eslint-disable-next-line no-lonely-if
+                if (updater.terrainOffsetProperty instanceof TerrainOffsetProperty) {
+                    this._openMaterialBatches[numberOfShadowModes + shadows].add(time, updater);
+                } else {
+                    this._openMaterialBatches[shadows].add(time, updater);
+                }
             }
         }
     };
