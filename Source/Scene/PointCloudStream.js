@@ -241,7 +241,7 @@ define([
 
         // Draco
         this._decodingState = DecodingState.READY;
-        this._dequantizeInShader = false;
+        this._dequantizeInShader = true;
         this._isQuantizedDraco = false;
         this._isOctEncodedDraco = false;
         this._octEncodedRange = 0.0;
@@ -749,13 +749,13 @@ define([
 
         content._opaqueRenderState = RenderState.fromCache({
             depthTest : {
-                enabled : true
+                enabled : false
             }
         });
 
         content._translucentRenderState = RenderState.fromCache({
             depthTest : {
-                enabled : true
+                enabled : false
             },
             depthMask : false,
             blending : BlendingState.ALPHA_BLEND
