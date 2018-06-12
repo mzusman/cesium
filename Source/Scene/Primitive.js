@@ -1944,7 +1944,7 @@ define([
                 var boundingSphere = primitive._instanceBoundingSpheres[index];
                 if (defined(boundingSphere)) {
                     var modelMatrix = primitive.modelMatrix;
-                    var offset = properties.offset;
+                    var offset = properties.offset.get();
                     if (defined(offset)) {
                         transformBoundingSphere(boundingSphere, Cartesian3.fromArray(offset, 0, offsetScratch), primitive._offsetInstanceExtend[index]);
                     }
