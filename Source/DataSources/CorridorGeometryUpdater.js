@@ -230,17 +230,24 @@ define([
         options.vertexFormat = isColorMaterial ? PerInstanceColorAppearance.VERTEX_FORMAT : MaterialAppearance.MaterialSupport.TEXTURED.vertexFormat;
         options.positions = corridor.positions.getValue(Iso8601.MINIMUM_VALUE, options.positions);
         options.height = defined(height) ? height.getValue(Iso8601.MINIMUM_VALUE) : undefined;
+        options.extrudedHeight = defined(extrudedHeight) ? extrudedHeight.getValue(Iso8601.MINIMUM_VALUE) : undefined;
         options.granularity = defined(granularity) ? granularity.getValue(Iso8601.MINIMUM_VALUE) : undefined;
         options.width = defined(width) ? width.getValue(Iso8601.MINIMUM_VALUE) : undefined;
         options.cornerType = defined(cornerType) ? cornerType.getValue(Iso8601.MINIMUM_VALUE) : undefined;
 
-        if (extrudedHeight instanceof GeometryHeightProperty && extrudedHeight.getHeightReference(Iso8601.MINIMUM_VALUE) === HeightReference.CLAMP_TO_GROUND) {
-            scratchCorridorGeometry.setOptions(options);
-            options.extrudedHeight = GeometryHeightProperty.getMinimumTerrainValue(scratchCorridorGeometry.rectangle);
-            options.offsetAttribute = GeometryOffsetAttribute.TOP;
+        if (extrudedHeight instanceof GeometryHeightProperty) {
+            var heightReference = extrudedHeight.getHeightReference(Iso8601.MINIMUM_VALUE);
+            if (heightReference === HeightReference.CLAMP_TO_GROUND) {
+                scratchCorridorGeometry.setOptions(options);
+                options.extrudedHeight = GeometryHeightProperty.getMinimumTerrainValue(scratchCorridorGeometry.rectangle);
+                options.offsetAttribute = GeometryOffsetAttribute.TOP;
+            } else if (heightReference === HeightReference.RELATIVE_TO_GROUND) {
+                options.offsetAttribute = GeometryOffsetAttribute.ALL;
+            } else {
+                options.offsetAttribute = GeometryOffsetAttribute.NONE;
+            }
         } else {
-            options.extrudedHeight = defined(extrudedHeight) ? extrudedHeight.getValue(Iso8601.MINIMUM_VALUE) : undefined;
-            options.offsetAttribute = GeometryOffsetAttribute.ALL;
+            options.offsetAttribute = GeometryOffsetAttribute.NONE;
         }
     };
 

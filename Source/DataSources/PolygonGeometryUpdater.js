@@ -246,10 +246,16 @@ define([
         var heightValue = Property.getValueOrUndefined(polygon.height, Iso8601.MINIMUM_VALUE);
         var closeTopValue = Property.getValueOrDefault(polygon.closeTop, Iso8601.MINIMUM_VALUE, true);
         var closeBottomValue = Property.getValueOrDefault(polygon.closeBottom, Iso8601.MINIMUM_VALUE, true);
+        var extrudedHeightValue = Property.getValueOrUndefined(polygon.extrudedHeight, Iso8601.MINIMUM_VALUE);
         var perPositionHeightValue = Property.getValueOrUndefined(polygon.perPositionHeight, Iso8601.MINIMUM_VALUE);
+
+        if (defined(extrudedHeightValue) && !defined(heightValue) && !defined(perPositionHeightValue)) {
+            heightValue = 0;
+        }
 
         options.polygonHierarchy = hierarchyValue;
         options.height = heightValue;
+        options.extrudedHeight = extrudedHeightValue;
         options.granularity = Property.getValueOrUndefined(polygon.granularity, Iso8601.MINIMUM_VALUE);
         options.stRotation = Property.getValueOrUndefined(polygon.stRotation, Iso8601.MINIMUM_VALUE);
         options.perPositionHeight = perPositionHeightValue;
@@ -257,17 +263,19 @@ define([
         options.closeBottom = closeBottomValue;
 
         var extrudedHeight = polygon.extrudedHeight;
-        if (extrudedHeight instanceof GeometryHeightProperty && extrudedHeight.getHeightReference(Iso8601.MINIMUM_VALUE) === HeightReference.CLAMP_TO_GROUND) {
-            scratchPolygonGeometry.setOptions(options);
-            options.extrudedHeight = GeometryHeightProperty.getMinimumTerrainValue(scratchPolygonGeometry.rectangle);
-            options.offsetAttribute = GeometryOffsetAttribute.TOP;
+        if (extrudedHeight instanceof GeometryHeightProperty) {
+            var heightReference = extrudedHeight.getHeightReference(Iso8601.MINIMUM_VALUE);
+            if (heightReference ===  HeightReference.CLAMP_TO_GROUND) {
+                scratchPolygonGeometry.setOptions(options);
+                options.extrudedHeight = GeometryHeightProperty.getMinimumTerrainValue(scratchPolygonGeometry.rectangle);
+                options.offsetAttribute = GeometryOffsetAttribute.TOP;
+            } else if (heightReference === HeightReference.RELATIVE_TO_GROUND) {
+                options.offsetAttribute = GeometryOffsetAttribute.ALL;
+            } else {
+                options.offsetAttribute = GeometryOffsetAttribute.NONE;
+            }
         } else {
-            options.extrudedHeight = Property.getValueOrUndefined(polygon.extrudedHeight, Iso8601.MINIMUM_VALUE);
-            options.offsetAttribute = GeometryOffsetAttribute.ALL;
-        }
-
-        if (defined(options.extrudedHeight) && !defined(heightValue) && !defined(perPositionHeightValue)) {
-            options.height = 0;
+            options.offsetAttribute = GeometryOffsetAttribute.NONE;
         }
     };
 
